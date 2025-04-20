@@ -1,0 +1,4 @@
+python-telegram-bot
+psycopg2-binary
+requests
+python-dotenv # Se usar .env localmente, não precisa no Render se definir vars direto
