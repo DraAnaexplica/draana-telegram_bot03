@@ -1,46 +1,31 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from app import telegram_utils, db, painel
-import uvicorn
 
 app = FastAPI()
-
-# ⬇️ Inclui o painel de controle de usuárias
-app.include_router(painel.router)
-
-@app.get("/")
-def home():
-    return {"mensagem": "API da Dra. Ana está ativa."}
+templates = Jinja2Templates(directory="templates")
 
 @app.post("/webhook")
 async def webhook(request: Request):
-    payload = await request.json()
-    try:
-        user_id = str(payload["message"]["from"]["id"])
-        nome = payload["message"]["from"].get("first_name", "Desconhecida")
+    return await telegram_utils.handle_telegram_webhook(await request.json())
 
-        # Registra usuária, se for nova
-        db.registrar_usuario(user_id, nome)
+@app.get("/painel", response_class=HTMLResponse)
+def exibir_painel(request: Request):
+    return painel.exibir_painel(request)
 
-        # Verifica se ainda tem acesso
-        if not db.verificar_acesso(user_id):
-            texto_bloqueio = (
-                "❌ Seu período de uso gratuito terminou.\n\n"
-                "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
-            )
-            telegram_utils.enviar_mensagem(user_id, texto_bloqueio)
-            return {"status": "bloqueado"}
+@app.post("/painel/bloquear")
+def bloquear_usuario(user_id: str = Form(...)):
+    return painel.bloquear_usuario(user_id)
 
-        return await telegram_utils.processar_mensagem(payload)
+@app.post("/painel/desbloquear")
+def desbloquear_usuario(user_id: str = Form(...)):
+    return painel.desbloquear_usuario(user_id)
 
-    except Exception as e:
-        print("Erro no webhook:", e)
-        return {"erro": "Falha ao processar a mensagem"}
+@app.post("/painel/renovar")
+def renovar_acesso(user_id: str = Form(...)):
+    return painel.renovar_acesso(user_id)
 
-@app.get("/simular_usuario/{user_id}")
-def simular_usuario(user_id: str):
-    db.registrar_usuario(user_id)
-    acesso = db.verificar_acesso(user_id)
-    if acesso:
-        return {"status": "liberado", "mensagem": "Usuária tem acesso liberado."}
-    else:
-        return {"status": "bloqueado", "mensagem": "Acesso negado ou expirado."}
+@app.post("/painel/apagar")
+def apagar_usuario(user_id: str = Form(...)):
+    return painel.apagar_usuario(user_id)
