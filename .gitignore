@@ -1,99 +1,12 @@
-# --- Arquivo .gitignore para Projeto Python (Bot Telegram) ---
-
-# Arquivos de Ambiente e Segredos (MUITO IMPORTANTE IGNORAR!)
-# Contêm API Keys, Tokens, URLs de Banco de Dados, etc.
+# Evita subir configurações sensíveis e arquivos locais
 .env
-.env.*
-*.env
-env.yaml
-secrets.*
-credentials.*
-
-# Byte-code e Arquivos Compilados Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Otimizações do Python
-*.O
-
-# Arquivos de Distribuição / Empacotamento / Instalação
-dist/
-build/
-*.egg-info/
-downloads/
-eggs/
-*.egg
-wheels/
-*.whl
-pip-wheel-metadata/
-MANIFEST
-
-# Ambientes Virtuais Python (venv, env, .venv, etc.)
-/env/
-/venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.venv/
-.env/ # Cuidado para não confundir com o arquivo .env
-
-# Bancos de Dados Locais (Se usar SQLite para testes, por exemplo)
-*.db
-*.sqlite
 *.sqlite3
-*.db-journal # Arquivos temporários do SQLite
-
-# Arquivos de Log e Relatórios
 *.log
-logs/
-*.out
-*.report
-*.prof
-*.lprof
-*.cprof
-
-# Arquivos Temporários e de Backup comuns
-*~
-*.bak
-*.tmp
-*.swp
-*.swo
-
-# Configurações e Metadados de IDEs / Editores
-.idea/           # IntelliJ / PyCharm
-.vscode/         # Visual Studio Code
-*.sublime-project
-*.sublime-workspace
-nbproject/       # NetBeans
-.project         # Eclipse
-.settings/       # Eclipse
-*.komodoproject  # Komodo Edit
-
-# Arquivos específicos do Sistema Operacional
-.DS_Store        # macOS
-Thumbs.db        # Windows
-ehthumbs.db      # Windows
-._* # macOS resource forks
-.Spotlight-V100  # macOS
-.Trashes         # macOS
-
-# Ferramentas de Teste e Cobertura de Código
-.coverage
-.coverage.*
-nosetests.xml
-coverage.xml
-htmlcov/
-.pytest_cache/
-pytestdebug.log
-
-# Arquivos de Notebooks (se usar Jupyter)
-.ipynb_checkpoints
-
-# Outros
-*.pid
-*.seed
-*.cfg # Ignore se não forem arquivos de configuração que você quer versionar
+*.db
+venv/
+.env.*
+.DS_Store
