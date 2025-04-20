@@ -2,7 +2,8 @@
 
 import os
 import requests
-from app.db import add_chat_message, get_chat_history
+from app.chat_db import add_chat_message, get_chat_history
+
 from app.openrouter_utils import gerar_resposta_openrouter
 from dotenv import load_dotenv
 
