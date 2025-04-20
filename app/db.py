@@ -1,44 +1,31 @@
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from dotenv import load_dotenv
-from datetime import datetime
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from app import telegram_utils, db, painel
 
-load_dotenv()
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+@app.post("/webhook")
+async def webhook(request: Request):
+    return await telegram_utils.handle_telegram_webhook(await request.json())
 
-def conectar():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+@app.get("/painel", response_class=HTMLResponse)
+def exibir_painel(request: Request):
+    return painel.exibir_painel(request)
 
-def add_chat_message(user_id, role, content):
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO chat_history (user_id, role, content, timestamp) VALUES (%s, %s, %s, %s)",
-        (user_id, role, content, datetime.now())
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+@app.post("/painel/bloquear")
+def bloquear_usuario(user_id: str = Form(...)):
+    return painel.bloquear_usuario(user_id)
 
-def get_chat_history(user_id):
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT role, content FROM chat_history WHERE user_id = %s ORDER BY timestamp ASC",
-        (user_id,)
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return rows
+@app.post("/painel/desbloquear")
+def desbloquear_usuario(user_id: str = Form(...)):
+    return painel.desbloquear_usuario(user_id)
 
-def get_all_users():
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute("SELECT DISTINCT user_id FROM chat_history")
-    users = cur.fetchall()
-    cur.close()
-    conn.close()
-    return users
+@app.post("/painel/renovar")
+def renovar_acesso(user_id: str = Form(...)):
+    return painel.renovar_acesso(user_id)
+
+@app.post("/painel/apagar")
+def apagar_usuario(user_id: str = Form(...)):
+    return painel.apagar_usuario(user_id)
