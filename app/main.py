@@ -1,8 +1,11 @@
 from fastapi import FastAPI, Request
-from app import telegram_utils, db
+from app import telegram_utils, db, painel
 import uvicorn
 
 app = FastAPI()
+
+# ⬇️ Inclui o painel de controle de usuárias
+app.include_router(painel.router)
 
 @app.get("/")
 def home():
@@ -15,14 +18,20 @@ async def webhook(request: Request):
         user_id = str(payload["message"]["from"]["id"])
         nome = payload["message"]["from"].get("first_name", "Desconhecida")
 
-        # REGISTRA USUÁRIA CASO NOVA
+        # Registra usuária, se for nova
         db.registrar_usuario(user_id, nome)
 
-        # VERIFICA ACESSO
+        # Verifica se ainda tem acesso
         if not db.verificar_acesso(user_id):
-            return {"mensagem": "Acesso negado. Seu período de uso expirou."}
+            texto_bloqueio = (
+                "❌ Seu período de uso gratuito terminou.\n\n"
+                "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
+            )
+            telegram_utils.enviar_mensagem(user_id, texto_bloqueio)
+            return {"status": "bloqueado"}
 
         return await telegram_utils.processar_mensagem(payload)
+
     except Exception as e:
         print("Erro no webhook:", e)
         return {"erro": "Falha ao processar a mensagem"}
