@@ -3,8 +3,7 @@ import os
 from dotenv import load_dotenv
 from app.chat_db import add_chat_message, get_chat_history
 from app.openrouter_utils import gerar_resposta_openrouter
-from app.db import verificar_acesso
-
+from app.db import registrar_usuario, verificar_acesso
 
 load_dotenv()
 
