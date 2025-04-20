@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from app import telegram_utils, db, painel
+from app import telegram_utils, painel
+
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")

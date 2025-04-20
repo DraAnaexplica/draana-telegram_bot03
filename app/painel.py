@@ -1,7 +1,8 @@
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from app.db import conectar
+from app.db_core import conectar
+
 
 router = APIRouter()
 
