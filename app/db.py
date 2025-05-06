@@ -41,10 +41,44 @@ def verificar_acesso(user_id: str) -> bool:
 def get_all_users() -> list[dict]:
     conn = conectar()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("SELECT user_id, nome, ativo FROM usuarios ORDER BY data_cadastro DESC;")
+        cur.execute(
+            "SELECT user_id, nome, ativo FROM usuarios ORDER BY data_cadastro DESC;"
+        )
         rows = cur.fetchall()
     conn.close()
     return rows
+
+def ativar_usuario(user_id: str) -> None:
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE usuarios SET ativo = TRUE WHERE user_id = %s;",
+            (user_id,)
+        )
+    conn.close()
+
+def bloquear_usuario(user_id: str) -> None:
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE usuarios SET ativo = FALSE WHERE user_id = %s;",
+            (user_id,)
+        )
+    conn.close()
+
+def renovar_acesso(user_id: str, dias: int) -> None:
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE usuarios
+               SET data_cadastro = NOW(),
+                   dias_restantes = %s
+             WHERE user_id = %s;
+            """,
+            (dias, user_id)
+        )
+    conn.close()
 
 def excluir_usuario(user_id: str) -> None:
     conn = conectar()

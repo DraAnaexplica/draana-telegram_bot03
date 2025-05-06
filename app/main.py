@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Painel de usuárias sem prefixo duplicado
 app.include_router(painel_router)
 
 @app.post("/webhook")
