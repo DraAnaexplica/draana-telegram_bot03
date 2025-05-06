@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel de Usuárias - Dra. Ana</title>
+  <title>Painel de Usuárias</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 2rem; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: left; }
+    th, td { padding: 0.5rem; border: 1px solid #ccc; }
     th { background: #f5f5f5; }
     form { display: inline; }
-    button { padding: 0.3rem 0.6rem; margin-right: 0.3rem; border: none; border-radius: 4px; cursor: pointer; }
+    button { margin-right: 0.3rem; padding: 0.3rem 0.6rem; border: none; border-radius: 4px; cursor: pointer; }
     .btn-ativar { background: #4CAF50; color: white; }
     .btn-bloquear { background: #f44336; color: white; }
     .btn-renovar { background: #2196F3; color: white; }
@@ -20,11 +20,10 @@
 </head>
 <body>
   <h1>Painel de Usuárias - Dra. Ana</h1>
-
   {% if usuarios %}
   <table>
     <thead>
-      <tr><th>Usuária (ID)</th><th>Nome</th><th>Status</th><th>Ações</th></tr>
+      <tr><th>ID</th><th>Nome</th><th>Status</th><th>Ações</th></tr>
     </thead>
     <tbody>
       {% for u in usuarios %}
@@ -35,20 +34,20 @@
         <td>
           <form action="/painel/ativar" method="post">
             <input type="hidden" name="user_id" value="{{ u.user_id }}">
-            <button type="submit" class="btn-ativar">Ativar</button>
+            <button class="btn-ativar">Ativar</button>
           </form>
           <form action="/painel/bloquear" method="post">
             <input type="hidden" name="user_id" value="{{ u.user_id }}">
-            <button type="submit" class="btn-bloquear">Bloquear</button>
+            <button class="btn-bloquear">Bloquear</button>
           </form>
           <form action="/painel/renovar" method="post">
             <input type="hidden" name="user_id" value="{{ u.user_id }}">
             <input type="number" name="dias" value="5" min="1" style="width:4rem;">
-            <button type="submit" class="btn-renovar">Renovar</button>
+            <button class="btn-renovar">Renovar</button>
           </form>
           <form action="/painel/excluir" method="post">
             <input type="hidden" name="user_id" value="{{ u.user_id }}">
-            <button type="submit" class="btn-excluir">Excluir</button>
+            <button class="btn-excluir">Excluir</button>
           </form>
         </td>
       </tr>
@@ -60,7 +59,7 @@
   {% endif %}
 
   <form action="/painel/limpar" method="post">
-    <button type="submit" class="btn-limpar">Limpar Todas as Usuárias</button>
+    <button class="btn-limpar">Limpar Todas as Usuárias</button>
   </form>
 </body>
 </html>

@@ -16,9 +16,9 @@ def registrar_usuario(user_id: str, nome: str) -> None:
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO usuarios (user_id, nome, ativo, data_cadastro, dias_restantes)
+            INSERT INTO usuarios(user_id, nome, ativo, data_cadastro, dias_restantes)
             VALUES (%s, %s, TRUE, NOW(), %s)
-            ON CONFLICT (user_id) DO NOTHING;
+            ON CONFLICT(user_id) DO NOTHING;
             """,
             (user_id, nome, DEFAULT_FREE_DAYS)
         )
@@ -29,23 +29,19 @@ def verificar_acesso(user_id: str) -> bool:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "SELECT ativo, data_cadastro, dias_restantes FROM usuarios WHERE user_id = %s;",
-            (user_id,),
+            (user_id,)
         )
         usuario = cur.fetchone()
     conn.close()
-
     if not usuario or not usuario['ativo']:
         return False
     dias_usados = (datetime.utcnow() - usuario['data_cadastro']).days
     return dias_usados < usuario['dias_restantes']
 
 def get_all_users() -> list[dict]:
-    """
-    Retorna lista de todos os usuários com campos: user_id, nome, ativo.
-    """
     conn = conectar()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("SELECT user_id, nome, ativo FROM usuarios;")
+        cur.execute("SELECT user_id, nome, ativo FROM usuarios ORDER BY data_cadastro DESC;")
         rows = cur.fetchall()
     conn.close()
     return rows

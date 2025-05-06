@@ -1,40 +1,23 @@
-# app/openrouter_utils.py
-
 import os
 import requests
-from dotenv import load_dotenv
+import logging
 
-load_dotenv()
+logger = logging.getLogger("draana.openrouter_utils")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_URL = os.getenv("OPENROUTER_URL", "https://api.openrouter.ai/v1/chat/completions")
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL = "deepseek/deepseek-chat-v3-0324"  # ou troque pelo que desejar
-
-def gerar_resposta_openrouter(mensagens):
-    url = "https://openrouter.ai/api/v1/chat/completions"
+def gerar_resposta_openrouter(historico: list[dict]) -> str:
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://draana.onrender.com",
-        "X-Title": "DraAnaTelegramBot"
     }
-
-    # Carrega o system prompt do arquivo
-    with open("app/system_prompt.txt", "r", encoding="utf-8") as f:
-        system_prompt = f.read().strip()
-
-    # Adiciona o system prompt como primeira mensagem
-    mensagens.insert(0, {"role": "system", "content": system_prompt})
-
-    data = {
-        "model": MODEL,
-        "messages": mensagens,
-        "temperature": 0.8
-    }
-
+    payload = {"model": "gpt-4o-mini", "messages": historico}
     try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()['choices'][0]['message']['content']
+        resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+        choice = data.get("choices", [])[0]
+        return choice.get("message", {}).get("content", "").strip()
     except Exception as e:
-        print(f"Erro ao gerar resposta: {e}")
-        return "Desculpe, algo deu errado ao gerar a resposta."
+        logger.error(f"Erro OpenRouter: {e}")
+        return "Desculpe, houve um erro ao processar sua mensagem."  

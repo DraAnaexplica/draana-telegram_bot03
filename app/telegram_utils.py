@@ -9,11 +9,11 @@ async def processar_mensagem(payload: dict) -> None:
     from app.chat_db import add_chat_message, get_chat_history, clear_chat_history
     from app.openrouter_utils import gerar_resposta_openrouter
 
-    chat = payload.get("message", {}).get("chat", {})
+    msg = payload.get("message", {})
+    chat = msg.get("chat", {})
     chat_id = chat.get("id")
-    texto = payload.get("message", {}).get("text", "").strip()
+    texto = msg.get("text", "").strip()
 
-    # Reset de histórico no comando /start
     if texto.lower() == "/start":
         clear_chat_history(str(chat_id))
 
