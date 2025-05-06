@@ -5,15 +5,13 @@ import requests
 # Configuração de logs para este módulo
 logger = logging.getLogger("draana.telegram_utils")
 
-# Base da URL da API do Telegram
+# Token do bot
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 async def processar_mensagem(payload: dict) -> None:
     """
     Processa o payload do Telegram: salva histórico, gera resposta via OpenRouter e envia ao usuário.
     """
-    # Importa funções de histórico de chat
     from app.chat_db import add_chat_message, get_chat_history
     from app.openrouter_utils import gerar_resposta_openrouter
 
@@ -37,14 +35,15 @@ async def enviar_mensagem(chat_id: str, texto: str) -> None:
     """
     Envia uma mensagem ao Telegram via endpoint sendMessage, com logs de requisição e resposta.
     """
-    url = f"{BASE_URL}/sendMessage"
-    body = {
+    # Monta a URL diretamente sem espaços ou quebras
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
         "chat_id": chat_id,
         "text": texto
     }
-    logger.info(f"📤 Enviando mensagem - URL: {url}, payload: {body}")
+    logger.info(f"📤 Enviando mensagem - URL: {url}, payload: {payload}")
     try:
-        resp = requests.post(url, json=body, timeout=10)
+        resp = requests.post(url, json=payload, timeout=10)
         logger.info(f"📥 Telegram respondeu: {resp.status_code} - {resp.text}")
     except Exception as e:
         logger.error(f"❌ Erro ao chamar sendMessage: {e}")
