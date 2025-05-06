@@ -2,77 +2,65 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Painel de Controle de Usuárias</title>
-  <link 
-    rel="stylesheet" 
-    href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
-  >
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Usuárias - Dra. Ana</title>
   <style>
-    body { font-family: sans-serif; margin: 2em; }
-    h1 { margin-bottom: 1em; }
-    table { width: 100%; }
-    button { margin: 0 .2em; }
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: left; }
+    th { background: #f5f5f5; }
+    form { display: inline; }
+    button { padding: 0.3rem 0.6rem; margin-right: 0.3rem; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-ativar { background: #4CAF50; color: white; }
+    .btn-bloquear { background: #f44336; color: white; }
+    .btn-renovar { background: #2196F3; color: white; }
+    .btn-excluir { background: #777; color: white; }
+    .btn-limpar { background: #e91e63; color: white; margin-top: 1rem; }
   </style>
 </head>
 <body>
-  <h1>👩‍⚕️ Painel de Controle de Usuárias</h1>
+  <h1>Painel de Usuárias - Dra. Ana</h1>
 
-  <!-- Botão Limpar Tudo -->
-  <form method="post" action="/painel/limpar" style="margin-bottom:1em;">
-    <button type="submit">🗑️ Limpar Todas as Usuárias</button>
-  </form>
-
-  <table id="tabela-usuarias" class="display">
+  {% if usuarios %}
+  <table>
     <thead>
-      <tr>
-        <th>User ID</th>
-        <th>Nome</th>
-        <th>Ativo</th>
-        <th>Dias Restantes</th>
-        <th>Ações</th>
-      </tr>
+      <tr><th>Usuária (ID)</th><th>Nome</th><th>Status</th><th>Ações</th></tr>
     </thead>
     <tbody>
-      {% for uid, nome, ativo, dias in usuarias %}
+      {% for u in usuarios %}
       <tr>
-        <td>{{ uid }}</td>
-        <td>{{ nome }}</td>
-        <td>{% if ativo %}✅{% else %}❌{% endif %}</td>
-        <td>{{ dias }}</td>
+        <td>{{ u.user_id }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ 'Ativa' if u.ativo else 'Bloqueada' }}</td>
         <td>
-          <form method="post" action="/painel/bloquear" style="display:inline;">
-            <input type="hidden" name="user_id" value="{{ uid }}">
-            <button type="submit">Bloquear</button>
+          <form action="/painel/ativar" method="post">
+            <input type="hidden" name="user_id" value="{{ u.user_id }}">
+            <button type="submit" class="btn-ativar">Ativar</button>
           </form>
-          <form method="post" action="/painel/ativar" style="display:inline;">
-            <input type="hidden" name="user_id" value="{{ uid }}">
-            <button type="submit">Ativar</button>
+          <form action="/painel/bloquear" method="post">
+            <input type="hidden" name="user_id" value="{{ u.user_id }}">
+            <button type="submit" class="btn-bloquear">Bloquear</button>
           </form>
-          <form method="post" action="/painel/renovar" style="display:inline;">
-            <input type="hidden" name="user_id" value="{{ uid }}">
-            <input type="number" name="dias" placeholder="Dias" required style="width:4em;">
-            <button type="submit">Renovar</button>
+          <form action="/painel/renovar" method="post">
+            <input type="hidden" name="user_id" value="{{ u.user_id }}">
+            <input type="number" name="dias" value="5" min="1" style="width:4rem;">
+            <button type="submit" class="btn-renovar">Renovar</button>
           </form>
-          <form method="post" action="/painel/excluir" style="display:inline;">
-            <input type="hidden" name="user_id" value="{{ uid }}">
-            <button type="submit">Excluir</button>
+          <form action="/painel/excluir" method="post">
+            <input type="hidden" name="user_id" value="{{ u.user_id }}">
+            <button type="submit" class="btn-excluir">Excluir</button>
           </form>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% else %}
+    <p>Nenhuma usuária cadastrada.</p>
+  {% endif %}
 
-  <script>
-    $(document).ready(function(){
-      $('#tabela-usuarias').DataTable({
-        language: {
-          url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
-        }
-      });
-    });
-  </script>
+  <form action="/painel/limpar" method="post">
+    <button type="submit" class="btn-limpar">Limpar Todas as Usuárias</button>
+  </form>
 </body>
 </html>
