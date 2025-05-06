@@ -1,16 +1,26 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
-from app.db import ativar_usuario, bloquear_usuario, renovar_acesso, excluir_usuario, limpar_usuarios
+
+from app.db import (
+    get_all_users,
+    ativar_usuario,
+    bloquear_usuario,
+    renovar_acesso,
+    excluir_usuario,
+    limpar_usuarios,
+)
 
 router = APIRouter()
 
-env = Environment(loader=FileSystemLoader("app/templates"))  # Certifique-se de ter a pasta app/templates e o painel.html
+# Carrega templates em app/templates
+env = Environment(loader=FileSystemLoader("app/templates"))
 
 @router.get("/painel", response_class=HTMLResponse)
 async def view_painel(request: Request):
+    usuarios = get_all_users()
     template = env.get_template("painel.html")
-    return HTMLResponse(template.render(request=request))
+    return HTMLResponse(template.render(request=request, usuarios=usuarios))
 
 @router.post("/painel/ativar")
 async def action_ativar(user_id: str = Form(...)):

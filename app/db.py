@@ -6,12 +6,10 @@ from psycopg2.extras import RealDictCursor
 DATABASE_URL = os.getenv("DATABASE_URL")
 DEFAULT_FREE_DAYS = 5
 
-
 def conectar():
     conn = psycopg2.connect(DATABASE_URL)
     conn.autocommit = True
     return conn
-
 
 def registrar_usuario(user_id: str, nome: str) -> None:
     conn = conectar()
@@ -25,7 +23,6 @@ def registrar_usuario(user_id: str, nome: str) -> None:
             (user_id, nome, DEFAULT_FREE_DAYS)
         )
     conn.close()
-
 
 def verificar_acesso(user_id: str) -> bool:
     conn = conectar()
@@ -42,6 +39,16 @@ def verificar_acesso(user_id: str) -> bool:
     dias_usados = (datetime.utcnow() - usuario['data_cadastro']).days
     return dias_usados < usuario['dias_restantes']
 
+def get_all_users() -> list[dict]:
+    """
+    Retorna lista de todos os usuários com campos: user_id, nome, ativo.
+    """
+    conn = conectar()
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT user_id, nome, ativo FROM usuarios;")
+        rows = cur.fetchall()
+    conn.close()
+    return rows
 
 def excluir_usuario(user_id: str) -> None:
     conn = conectar()
@@ -49,7 +56,6 @@ def excluir_usuario(user_id: str) -> None:
         cur.execute("DELETE FROM usuarios WHERE user_id = %s;", (user_id,))
         cur.execute("DELETE FROM chat WHERE user_id = %s;", (user_id,))
     conn.close()
-
 
 def limpar_usuarios() -> None:
     conn = conectar()
