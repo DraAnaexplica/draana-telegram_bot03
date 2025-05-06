@@ -3,23 +3,15 @@ import psycopg2
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
 
-# URL de conexão (usada por todas as funções)
 DATABASE_URL = os.getenv("DATABASE_URL")
+DEFAULT_FREE_DAYS = 5
 
 def conectar():
-    """
-    Retorna uma nova conexão ao PostgreSQL com autocommit ativado.
-    Usada pelo painel (app/painel.py) para listar e alterar usuárias.
-    """
     conn = psycopg2.connect(DATABASE_URL)
     conn.autocommit = True
     return conn
 
-# Número de dias grátis padrão
-DEFAULT_FREE_DAYS = 5
-
 def registrar_usuario(user_id: str, nome: str) -> None:
-    """Insere novo usuário com dias grátis padrão."""
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
@@ -34,7 +26,6 @@ def registrar_usuario(user_id: str, nome: str) -> None:
     conn.close()
 
 def verificar_acesso(user_id: str) -> bool:
-    """Retorna True se estiver ativo e dentro do período grátis."""
     conn = conectar()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -51,45 +42,28 @@ def verificar_acesso(user_id: str) -> bool:
     if not usuario or not usuario['ativo']:
         return False
 
-    data_cad = usuario['data_cadastro']
-    dias_permitidos = usuario['dias_restantes']
-    dias_usados = (datetime.utcnow() - data_cad).days
-
-    return dias_usados < dias_permitidos
+    dias_usados = (datetime.utcnow() - usuario['data_cadastro']).days
+    return dias_usados < usuario['dias_restantes']
 
 def ativar_usuario(user_id: str) -> None:
-    """Marca o usuário como ativo (sem alterar datas)."""
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
-            """
-            UPDATE usuarios
-               SET ativo = TRUE
-             WHERE user_id = %s;
-            """,
+            "UPDATE usuarios SET ativo = TRUE WHERE user_id = %s;",
             (user_id,)
         )
     conn.close()
 
 def bloquear_usuario(user_id: str) -> None:
-    """Marca o usuário como inativo."""
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
-            """
-            UPDATE usuarios
-               SET ativo = FALSE
-             WHERE user_id = %s;
-            """,
+            "UPDATE usuarios SET ativo = FALSE WHERE user_id = %s;",
             (user_id,)
         )
     conn.close()
 
 def renovar_acesso(user_id: str, dias: int) -> None:
-    """
-    Renova o período: atualiza dias_restantes e reseta data_cadastro
-    para NOW(), garantindo que o novo ciclo comece na data da renovação.
-    """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
@@ -101,4 +75,19 @@ def renovar_acesso(user_id: str, dias: int) -> None:
             """,
             (dias, user_id)
         )
+    conn.close()
+
+def excluir_usuario(user_id: str) -> None:
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM usuarios WHERE user_id = %s;",
+            (user_id,)
+        )
+    conn.close()
+
+def limpar_usuarios() -> None:
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute("TRUNCATE TABLE usuarios;")
     conn.close()

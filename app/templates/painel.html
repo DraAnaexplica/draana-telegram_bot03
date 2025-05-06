@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel de Controle de Usuárias</title>
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
+  >
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    h1 { margin-bottom: 1em; }
+    table { width: 100%; }
+    button { margin: 0 .2em; }
+  </style>
+</head>
+<body>
+  <h1>👩‍⚕️ Painel de Controle de Usuárias</h1>
+
+  <!-- Botão Limpar Tudo -->
+  <form method="post" action="/painel/limpar" style="margin-bottom:1em;">
+    <button type="submit">🗑️ Limpar Todas as Usuárias</button>
+  </form>
+
+  <table id="tabela-usuarias" class="display">
+    <thead>
+      <tr>
+        <th>User ID</th>
+        <th>Nome</th>
+        <th>Ativo</th>
+        <th>Dias Restantes</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for uid, nome, ativo, dias in usuarias %}
+      <tr>
+        <td>{{ uid }}</td>
+        <td>{{ nome }}</td>
+        <td>{% if ativo %}✅{% else %}❌{% endif %}</td>
+        <td>{{ dias }}</td>
+        <td>
+          <form method="post" action="/painel/bloquear" style="display:inline;">
+            <input type="hidden" name="user_id" value="{{ uid }}">
+            <button type="submit">Bloquear</button>
+          </form>
+          <form method="post" action="/painel/ativar" style="display:inline;">
+            <input type="hidden" name="user_id" value="{{ uid }}">
+            <button type="submit">Ativar</button>
+          </form>
+          <form method="post" action="/painel/renovar" style="display:inline;">
+            <input type="hidden" name="user_id" value="{{ uid }}">
+            <input type="number" name="dias" placeholder="Dias" required style="width:4em;">
+            <button type="submit">Renovar</button>
+          </form>
+          <form method="post" action="/painel/excluir" style="display:inline;">
+            <input type="hidden" name="user_id" value="{{ uid }}">
+            <button type="submit">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    $(document).ready(function(){
+      $('#tabela-usuarias').DataTable({
+        language: {
+          url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
+        }
+      });
+    });
+  </script>
+</body>
+</html>
