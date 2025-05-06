@@ -1,46 +1,51 @@
+```python
+import os
+import logging
 from fastapi import FastAPI, Request
-from app import telegram_utils, db, painel
-import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.telegram_utils import processar_mensagem, enviar_mensagem
+from app.db import registrar_usuario, verificar_acesso
+from app.painel import router as painel_router
+
+# Configuração de logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("draana")
+
+# Inicialização do FastAPI
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["*"],
+)
 
-# ⬇️ Inclui o painel de controle de usuárias
-app.include_router(painel.router)
-
-@app.get("/")
-def home():
-    return {"mensagem": "API da Dra. Ana está ativa."}
+# Roteador do painel administrativo em /painel
+app.include_router(painel_router)
 
 @app.post("/webhook")
-async def webhook(request: Request):
+async def receive_webhook(request: Request):
+    # 1. Leia todo o JSON do webhook e registre no log
     payload = await request.json()
-    try:
-        user_id = str(payload["message"]["from"]["id"])
-        nome = payload["message"]["from"].get("first_name", "Desconhecida")
+    logger.info(f"📩 Payload recebido: {payload}")
 
-        # Registra usuária, se for nova
-        db.registrar_usuario(user_id, nome)
+    # 2. Extraia dados do usuário
+    message = payload.get("message", {})
+    user = message.get("from", {})
+    user_id = str(user.get("id", ""))
+    nome = user.get("first_name", "Desconhecida")
 
-        # Verifica se ainda tem acesso
-        if not db.verificar_acesso(user_id):
-            texto_bloqueio = (
-                "❌ Seu período de uso gratuito terminou.\n\n"
-                "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
-            )
-            telegram_utils.enviar_mensagem(user_id, texto_bloqueio)
-            return {"status": "bloqueado"}
+    # 3. Registre no banco e verifique acesso
+    registrar_usuario(user_id, nome)
+    if not verificar_acesso(user_id):
+        enviar_mensagem(
+            user_id,
+            "❌ Seu período de uso gratuito terminou.\n\n"
+            "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
+        )
+        return {"status": "bloqueado"}
 
-        return await telegram_utils.processar_mensagem(payload)
-
-    except Exception as e:
-        print("Erro no webhook:", e)
-        return {"erro": "Falha ao processar a mensagem"}
-
-@app.get("/simular_usuario/{user_id}")
-def simular_usuario(user_id: str):
-    db.registrar_usuario(user_id)
-    acesso = db.verificar_acesso(user_id)
-    if acesso:
-        return {"status": "liberado", "mensagem": "Usuária tem acesso liberado."}
-    else:
-        return {"status": "bloqueado", "mensagem": "Acesso negado ou expirado."}
+    # 4. Processe a mensagem e retorne a resposta da IA
+    return await processar_mensagem(payload)
+```
