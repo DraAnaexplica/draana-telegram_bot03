@@ -1,13 +1,11 @@
 services:
-  - type: web
-    name: draana-telegram-bot
+  web:
+    type: web
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --timeout 120
     envVars:
       - key: DATABASE_URL
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
       - key: TELEGRAM_BOT_TOKEN
-        sync: false
+    ports:
+      - port: 10000

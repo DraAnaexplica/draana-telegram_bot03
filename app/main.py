@@ -1,4 +1,3 @@
-import os
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +7,7 @@ from app.db import registrar_usuario, verificar_acesso
 from app.painel import router as painel_router
 
 # Configuração de logs
-dlogging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("draana")
 
 # Inicialização do FastAPI
@@ -20,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclusão do roteador de painel administrativo sem prefixo
+# Inclusão do roteador de painel de usuárias sem prefixo adicional
 app.include_router(painel_router)
 
 @app.post("/webhook")
@@ -40,7 +39,7 @@ async def receive_webhook(request: Request):
     if not verificar_acesso(user_id):
         await enviar_mensagem(
             user_id,
-            "❌ Seu período de uso gratuito terminou.\n\n"
+            "❌ Seu período de uso gratuito terminou.\n\n"  
             "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
         )
         return {"status": "bloqueado"}
