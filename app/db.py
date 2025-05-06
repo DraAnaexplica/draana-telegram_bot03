@@ -1,84 +1,87 @@
+import os
 import psycopg2
 from datetime import datetime
-import os
-from dotenv import load_dotenv
+from psycopg2.extras import RealDictCursor
 
-load_dotenv()
-
+# Conexão
 DATABASE_URL = os.getenv("DATABASE_URL")
+conn = psycopg2.connect(DATABASE_URL)
+conn.autocommit = True
 
-def conectar():
-    return psycopg2.connect(DATABASE_URL)
+# Número de dias grátis padrão
+DEFAULT_FREE_DAYS = 5
 
-def registrar_usuario(user_id, nome=None):
-    conn = conectar()
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT * FROM usuarios WHERE user_id = %s", (user_id,))
-        if cur.fetchone() is None:
-            cur.execute(
-                "INSERT INTO usuarios (user_id, nome) VALUES (%s, %s)",
-                (user_id, nome)
-            )
-            conn.commit()
-    except Exception as e:
-        print("Erro ao registrar usuário:", e)
-    finally:
-        cur.close()
-        conn.close()
+def registrar_usuario(user_id: str, nome: str) -> None:
+    """Insere novo usuário com dias grátis padrão."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO usuarios
+              (user_id, nome, ativo, data_cadastro, dias_restantes)
+            VALUES (%s, %s, TRUE, NOW(), %s)
+            ON CONFLICT (user_id) DO NOTHING;
+            """,
+            (user_id, nome, DEFAULT_FREE_DAYS)
+        )
 
-def verificar_acesso(user_id):
-    conn = conectar()
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT ativo, dias_restantes, data_cadastro FROM usuarios WHERE user_id = %s", (user_id,))
-        resultado = cur.fetchone()
-        if not resultado:
-            return False  # Usuário não encontrado
-        ativo, dias_restantes, data_cadastro = resultado
-        if not ativo:
+def verificar_acesso(user_id: str) -> bool:
+    """Retorna True se estiver ativo e dentro do período grátis."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT ativo, data_cadastro, dias_restantes
+              FROM usuarios
+             WHERE user_id = %s;
+            """,
+            (user_id,)
+        )
+        usuario = cur.fetchone()
+        if not usuario or not usuario['ativo']:
             return False
-        dias_uso = (datetime.now() - data_cadastro).days
-        return dias_uso < dias_restantes
-    except Exception as e:
-        print("Erro ao verificar acesso:", e)
-        return False
-    finally:
-        cur.close()
-        conn.close()
 
-def bloquear_usuario(user_id):
-    conn = conectar()
-    cur = conn.cursor()
-    try:
-        cur.execute("UPDATE usuarios SET ativo = FALSE WHERE user_id = %s", (user_id,))
-        conn.commit()
-    except Exception as e:
-        print("Erro ao bloquear usuário:", e)
-    finally:
-        cur.close()
-        conn.close()
+        # Calcula dias já usados
+        data_cad = usuario['data_cadastro']
+        dias_permitidos = usuario['dias_restantes']
+        dias_usados = (datetime.utcnow() - data_cad).days
 
-def ativar_usuario(user_id):
-    conn = conectar()
-    cur = conn.cursor()
-    try:
-        cur.execute("UPDATE usuarios SET ativo = TRUE WHERE user_id = %s", (user_id,))
-        conn.commit()
-    except Exception as e:
-        print("Erro ao ativar usuário:", e)
-    finally:
-        cur.close()
-        conn.close()
+        return dias_usados < dias_permitidos
 
-def renovar_acesso(user_id, dias):
-    conn = conectar()
-    cur = conn.cursor()
-    try:
-        cur.execute("UPDATE usuarios SET dias_restantes = %s WHERE user_id = %s", (dias, user_id))
-        conn.commit()
-    except Exception as e:
-        print("Erro ao renovar acesso:", e)
-    finally:
-        cur.close()
-        conn.close()
+def ativar_usuario(user_id: str) -> None:
+    """Marca o usuário como ativo (sem alterar datas)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE usuarios
+               SET ativo = TRUE
+             WHERE user_id = %s;
+            """,
+            (user_id,)
+        )
+
+def bloquear_usuario(user_id: str) -> None:
+    """Marca o usuário como inativo."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE usuarios
+               SET ativo = FALSE
+             WHERE user_id = %s;
+            """,
+            (user_id,)
+        )
+
+def renovar_acesso(user_id: str, dias: int) -> None:
+    """
+    Renova o período: atualiza dias_restantes E reseta data_cadastro
+    para NOW(), garantindo que o ciclo de expiração comece do dia da renovação.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE usuarios
+               SET dias_restantes = %s,
+                   data_cadastro   = NOW()
+             WHERE user_id = %s;
+            """,
+            (dias, user_id)
+        )
