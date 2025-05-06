@@ -1,30 +1,49 @@
-[2025-05-06  16:36:11  +0000]  [83]  [INFO]  Usando  trabalhador:  uvicorn.workers.UvicornWorker
-[2025-05-06  16:36:11  +0000]  [84]  [INFO]  Inicializando  o trabalhador  com  pid:  84
-[2025-05-06  16:36:11  +0000]  [85]  [INFO]  Inicializando  o trabalhador  com  pid:  85
-[2025-05-06  16:36:11  +0000]  [84]  [INFO] Processo do servidor  iniciado [84]   
-[2025-05-06  16:36:11  +0000]  [84]  [INFO]  Aguardando  inicialização  do aplicativo  .
-[2025-05-06  16:36:11  +0000]  [84]  [INFO] Inicialização  do aplicativo concluída.  
-[2025-05-06  16:36:11  +0000]  [85]  [INFO] Processo do servidor  iniciado [85]   
-[2025-05-06  16:36:11  +0000]  [85]  [INFO]  Aguardando  inicialização  do aplicativo  .
-[2025-05-06  16:36:11  +0000]  [85]  [INFO] Inicialização  do aplicativo concluída.  
-127.0.0.1:60408  -  "CABEÇA  /  HTTP/1.1"  404
-==>  Seu  serviço  está  ativo  🎉
-35.197.37.4:0  -  "OBTER  /  HTTP/1.1"  404
-INFO:draana:📩  Payload  recebido:  {'update_id':  530007346,  'message':  {'message_id':  10,  'from':  {'id':  6601584721,  'is_bot':  False,  'first_name':  'Andre',  'last_name':  'Luis',  'language_code':  'pt-br'},  'chat':  {'id':  6601584721,  'first_name':  'Andre',  'last_name':  'Luis',  'type':  'private'},  'date':  1746549402,  'text':  'ola'}}
-INFO:draana.telegram_utils:📝  processar_mensagem  -  chat_id=6601584721,  texto='ola'
-INFO:draana.telegram_utils:🤖  Resposta  do  modelo:  '**Oi,  querida!**  💛  Vamos  começar  do  zero  com  todo  cuidado!  
-👉  **Me  conta  seu  nome  e  idade  pra  eu  te  orientar  direitinho,  tá?**  (Isso  faz  TODA  diferença  pra  entender  seus  sintomas!)  
-###  🎯  **Enquanto  isso,  já  adianto:**  
--  Se  você tiver  **calorões,  insônia  ou  proteção**,  pode  ser  **hormonal**  (e  tem  solução!)  
--  Se  tá  se  sentindo  **esgotada  sem  motivo**,  seu  **cortisol**  pode  estar  gritando  por  ajuda  
--  **Nada  aqui  é  "só  estresse"**  –  seu  corpo  merece  atenção!  
-**Eu  falo:**  
-❓  **Qual  seu  maior  incômodo  hoje?**  
-❓  **Algum  médico  já  disse  que  "é  normal"  sem  te  examinar  direito?**  *(compartilha  comigo  essa  história!)*  
-*(Tô  aqui  pra  te  ouvir  SEM  julgamentos!)*  ✨  
-**Ah!**  Se  preferir,  pode  me  chamar  de  **Dra.  Ana**  –  fico  à  vontade!  😊'
-INFO:draana.telegram_utils:📤  Enviando  mensagem  -  URL: https://api.telegram.org/bot7843033047:AAFHT2v4c2d5-gJcscqVcDswsoMNUNeAyHo 
-/sendMessage,  payload:  {'chat_id':  6601584721,  'text':  '**Oi,  querida!**  💛  Vamos  começar  do  zero  com  todo  cuidado!   \n\n👉  **Me  conta  seu  nome  e  idade  pra  eu  te  orientar  direitinho,  tá?**  (Isso  faz  TODA  diferença  pra  entender  seus  sintomas!)   \n\n###  🎯  **Enquanto  isso,  já  adianto:**   \n-  Se  tiver  **calorões,  insônia  ou  benéfica**,  pode  ser  **hormonal**  (e  tem  solução!)   \n-  Se  tá  se  tá sentindo  **esgotada  sem  **,  seu  **cortisol**  pode  estar  gritando  por  ajuda   \n-  **Nada  aqui  é  "só  estresse"**  –  seu  corpo  merece  atenção!   \n\n**Me  fala:**   \n❓  **Qual  seu  maior  incômodo  hoje?**   \n❓  **Algum  médico  já  disse  que  "é  normal"  sem  te  examinar  direito?**  *(compartilha  comigo  essa  história!)*   \n\n*(Tô  aqui  pra  te  ouvir  SEM  julgamentos!)*  ✨   \n\n**Ah!**  Se  preferir,  pode  me  chamar  de  **Dra.  Ana**  –  fico  à  vontade!  😊'}
-INFO:draana.telegram_utils:📥  Telegram  respondeu:  404  -  {"ok":false,"error_code":404,"description":"Não  encontrado"}
-INFO:draana:✅  Mensagem  processada  para  usuário  6601584721
-91.108.5.6:0  -  "POST  /webhook  HTTP/1.1"  200
+import os
+import logging
+import requests
+
+# Logger para este módulo
+tp_logger = logging.getLogger("draana.telegram_utils")
+
+# Obtém o token do bot e remove espaços/newlines extras
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+
+async def processar_mensagem(payload: dict) -> None:
+    """
+    Processa o payload do Telegram: armazena no histórico, gera resposta via OpenRouter e envia de volta.
+    """
+    from app.chat_db import add_chat_message, get_chat_history
+    from app.openrouter_utils import gerar_resposta_openrouter
+
+    # Extrai informações do usuário
+    message = payload.get("message", {})
+    chat = message.get("chat", {})
+    chat_id = chat.get("id")
+    texto_usuario = message.get("text", "")
+    tp_logger.info(f"📝 processar_mensagem - chat_id={chat_id}, texto='{texto_usuario}'")
+
+    # Salva mensagem do usuário
+    add_chat_message(str(chat_id), "user", texto_usuario)
+
+    # Recupera histórico e obtém resposta da IA
+    historico = get_chat_history(str(chat_id))
+    resposta_ia = gerar_resposta_openrouter(historico)
+    tp_logger.info(f"🤖 Resposta do modelo: '{resposta_ia}'")
+
+    # Envia resposta para o usuário
+    await enviar_mensagem(chat_id, resposta_ia)
+
+async def enviar_mensagem(chat_id: str, texto: str) -> None:
+    """
+    Envia uma mensagem ao chat via API do Telegram.
+    """
+    # Constrói a URL corretamente, sem quebras ou espaços
+    base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+    url = f"{base_url}/sendMessage"
+    payload = {"chat_id": chat_id, "text": texto}
+    tp_logger.info(f"📤 Enviando mensagem - URL: {url}, payload: {payload}")
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        tp_logger.info(f"📥 Telegram respondeu: {response.status_code} - {response.text}")
+    except Exception as e:
+        tp_logger.error(f"❌ Erro ao enviar mensagem: {e}")
