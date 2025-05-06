@@ -1,52 +1,113 @@
-from app.db import conectar
+import os
+import psycopg2
+from datetime import datetime
+from psycopg2.extras import RealDictCursor
+
+# URL de conexão ao PostgreSQL e dias grátis padrão
+DATABASE_URL = os.getenv("DATABASE_URL")
+DEFAULT_FREE_DAYS = 5
 
 
-def add_chat_message(user_id: str, role: str, message: str) -> None:
+def conectar():
     """
-    Insere uma linha na tabela de chat para histórico de mensagens.
+    Retorna uma conexão com o banco PostgreSQL (autocommit).
+    """
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
+    return conn
+
+
+def registrar_usuario(user_id: str, nome: str) -> None:
+    """
+    Insere um usuário novo com dias grátis ou ignora se já existir.
     """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO chat (user_id, role, message, timestamp)
-            VALUES (%s, %s, %s, NOW());
+            INSERT INTO usuarios (user_id, nome, ativo, data_cadastro, dias_restantes)
+            VALUES (%s, %s, TRUE, NOW(), %s)
+            ON CONFLICT (user_id) DO NOTHING;
             """,
-            (user_id, role, message)
+            (user_id, nome, DEFAULT_FREE_DAYS)
         )
     conn.close()
 
 
-def get_chat_history(user_id: str) -> list[dict]:
+def verificar_acesso(user_id: str) -> bool:
     """
-    Retorna o histórico de chat do usuário como lista de dicts ordenada por timestamp.
-    Cada dict tem chaves 'role' e 'content'.
+    Retorna True se o usuário existe, está ativo e dentro do período grátis.
+    """
+    conn = conectar()
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT ativo, data_cadastro, dias_restantes FROM usuarios WHERE user_id = %s;",
+            (user_id,)
+        )
+        usuario = cur.fetchone()
+    conn.close()
+
+    if not usuario or not usuario['ativo']:
+        return False
+
+    dias_usados = (datetime.utcnow() - usuario['data_cadastro']).days
+    return dias_usados < usuario['dias_restantes']
+
+
+def ativar_usuario(user_id: str) -> None:
+    """
+    Marca o usuário como ativo.
+    """
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute("UPDATE usuarios SET ativo = TRUE WHERE user_id = %s;", (user_id,))
+    conn.close()
+
+
+def bloquear_usuario(user_id: str) -> None:
+    """
+    Marca o usuário como inativo.
+    """
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute("UPDATE usuarios SET ativo = FALSE WHERE user_id = %s;", (user_id,))
+    conn.close()
+
+
+def renovar_acesso(user_id: str, dias: int) -> None:
+    """
+    Renova o acesso, definindo dias_restantes e resetando data_cadastro.
     """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT role, message
-              FROM chat
-             WHERE user_id = %s
-             ORDER BY timestamp ASC;
+            UPDATE usuarios
+               SET dias_restantes = %s,
+                   data_cadastro   = NOW()
+             WHERE user_id = %s;
             """,
-            (user_id,)
+            (dias, user_id)
         )
-        rows = cur.fetchall()
     conn.close()
-    # Transforma em lista de dicionários com role e content
-    return [{"role": role, "content": message} for role, message in rows]
 
 
-def clear_chat_history(user_id: str) -> None:
+def excluir_usuario(user_id: str) -> None:
     """
-    Apaga todo o histórico de chat do usuário.
+    Deleta usuário e todo seu histórico de chat.
     """
     conn = conectar()
     with conn.cursor() as cur:
-        cur.execute(
-            "DELETE FROM chat WHERE user_id = %s;",
-            (user_id,)
-        )
+        cur.execute("DELETE FROM usuarios WHERE user_id = %s;", (user_id,))
+        cur.execute("DELETE FROM chat WHERE user_id = %s;", (user_id,))
+    conn.close()
+
+
+def limpar_usuarios() -> None:
+    """
+    Remove todos os registros de usuários e chat (reset completo).
+    """
+    conn = conectar()
+    with conn.cursor() as cur:
+        cur.execute("TRUNCATE TABLE usuarios, chat;")
     conn.close()
