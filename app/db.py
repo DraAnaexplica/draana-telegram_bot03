@@ -1,93 +1,52 @@
-import os
-import psycopg2
-from datetime import datetime
-from psycopg2.extras import RealDictCursor
+from app.db import conectar
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-DEFAULT_FREE_DAYS = 5
 
-def conectar():
-    conn = psycopg2.connect(DATABASE_URL)
-    conn.autocommit = True
-    return conn
-
-def registrar_usuario(user_id: str, nome: str) -> None:
+def add_chat_message(user_id: str, role: str, message: str) -> None:
+    """
+    Insere uma linha na tabela de chat para histórico de mensagens.
+    """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO usuarios
-              (user_id, nome, ativo, data_cadastro, dias_restantes)
-            VALUES (%s, %s, TRUE, NOW(), %s)
-            ON CONFLICT (user_id) DO NOTHING;
+            INSERT INTO chat (user_id, role, message, timestamp)
+            VALUES (%s, %s, %s, NOW());
             """,
-            (user_id, nome, DEFAULT_FREE_DAYS)
+            (user_id, role, message)
         )
     conn.close()
 
-def verificar_acesso(user_id: str) -> bool:
-    conn = conectar()
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute(
-            """
-            SELECT ativo, data_cadastro, dias_restantes
-              FROM usuarios
-             WHERE user_id = %s;
-            """,
-            (user_id,)
-        )
-        usuario = cur.fetchone()
-    conn.close()
 
-    if not usuario or not usuario['ativo']:
-        return False
-
-    dias_usados = (datetime.utcnow() - usuario['data_cadastro']).days
-    return dias_usados < usuario['dias_restantes']
-
-def ativar_usuario(user_id: str) -> None:
-    conn = conectar()
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE usuarios SET ativo = TRUE WHERE user_id = %s;",
-            (user_id,)
-        )
-    conn.close()
-
-def bloquear_usuario(user_id: str) -> None:
-    conn = conectar()
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE usuarios SET ativo = FALSE WHERE user_id = %s;",
-            (user_id,)
-        )
-    conn.close()
-
-def renovar_acesso(user_id: str, dias: int) -> None:
+def get_chat_history(user_id: str) -> list[dict]:
+    """
+    Retorna o histórico de chat do usuário como lista de dicts ordenada por timestamp.
+    Cada dict tem chaves 'role' e 'content'.
+    """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
             """
-            UPDATE usuarios
-               SET dias_restantes = %s,
-                   data_cadastro   = NOW()
-             WHERE user_id = %s;
+            SELECT role, message
+              FROM chat
+             WHERE user_id = %s
+             ORDER BY timestamp ASC;
             """,
-            (dias, user_id)
+            (user_id,)
         )
+        rows = cur.fetchall()
     conn.close()
+    # Transforma em lista de dicionários com role e content
+    return [{"role": role, "content": message} for role, message in rows]
 
-def excluir_usuario(user_id: str) -> None:
+
+def clear_chat_history(user_id: str) -> None:
+    """
+    Apaga todo o histórico de chat do usuário.
+    """
     conn = conectar()
     with conn.cursor() as cur:
         cur.execute(
-            "DELETE FROM usuarios WHERE user_id = %s;",
+            "DELETE FROM chat WHERE user_id = %s;",
             (user_id,)
         )
-    conn.close()
-
-def limpar_usuarios() -> None:
-    conn = conectar()
-    with conn.cursor() as cur:
-        cur.execute("TRUNCATE TABLE usuarios;")
     conn.close()

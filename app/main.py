@@ -7,11 +7,11 @@ from app.telegram_utils import processar_mensagem, enviar_mensagem
 from app.db import registrar_usuario, verificar_acesso
 from app.painel import router as painel_router
 
-# Configurações de logging
-logging.basicConfig(level=logging.INFO)
+# Configuração de logs
+dlogging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("draana")
 
-# Inicialização do FastAPI\app = FastAPI()
+# Inicialização do FastAPI
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -20,8 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclusão do roteador de painel administrativo
-app.include_router(painel_router, prefix="/painel")
+# Inclusão do roteador de painel administrativo sem prefixo
+app.include_router(painel_router)
 
 @app.post("/webhook")
 async def receive_webhook(request: Request):
@@ -29,7 +29,7 @@ async def receive_webhook(request: Request):
     payload = await request.json()
     logger.info("📩 Payload recebido: %s", payload)
 
-    # 2. Extrai informações do usuário
+    # 2. Extrai dados do usuário
     message = payload.get("message", {})
     user = message.get("from", {})
     user_id = str(user.get("id", ""))
@@ -40,7 +40,7 @@ async def receive_webhook(request: Request):
     if not verificar_acesso(user_id):
         await enviar_mensagem(
             user_id,
-            "❌ Seu período de uso gratuito terminou.\n\n" +
+            "❌ Seu período de uso gratuito terminou.\n\n"
             "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
         )
         return {"status": "bloqueado"}
