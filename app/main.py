@@ -1,4 +1,3 @@
-```python
 import os
 import logging
 from fastapi import FastAPI, Request
@@ -48,4 +47,3 @@ async def receive_webhook(request: Request):
 
     # 4. Processe a mensagem e retorne a resposta da IA
     return await processar_mensagem(payload)
-```
