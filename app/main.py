@@ -38,12 +38,19 @@ async def receive_webhook(request: Request):
     # 3. Registre no banco e verifique acesso
     registrar_usuario(user_id, nome)
     if not verificar_acesso(user_id):
-        enviar_mensagem(
+        await enviar_mensagem(
             user_id,
-            "❌ Seu período de uso gratuito terminou.\n\n"
+            "❌ Seu período de uso gratuito terminou.
+
+"
             "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
         )
         return {"status": "bloqueado"}
 
-    # 4. Processe a mensagem e retorne a resposta da IA
-    return await processar_mensagem(payload)
+    # 4. Processe a mensagem: adicionar histórico, gerar resposta e enviar ao Telegram
+    try:
+        await processar_mensagem(payload)
+        logger.info(f"✅ Mensagem processada para usuário {user_id}")
+    except Exception as e:
+        logger.error(f"❌ Erro ao processar mensagem: {e}")
+    return {"status": "ok"}
