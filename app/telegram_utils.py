@@ -1,60 +1,49 @@
-import requests
 import os
-from dotenv import load_dotenv
-from app.chat_db import add_chat_message, get_chat_history
-from app.openrouter_utils import gerar_resposta_openrouter
-from app.db import registrar_usuario, verificar_acesso
+import logging
+import requests
 
-load_dotenv()
+# Configuração de logs para este módulo
+tp_logger = logging.getLogger("draana.telegram_utils")
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+# Token do bot obtido das variáveis de ambiente
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-async def processar_mensagem(payload):
-    try:
-        mensagem = payload["message"]
-        user_id = str(mensagem["from"]["id"])
-        nome = mensagem["from"].get("first_name", "Desconhecida")
-        texto = mensagem.get("text", "")
+async def processar_mensagem(payload: dict) -> None:
+    """
+    Recebe o payload do Telegram, gera resposta via OpenRouter e envia de volta.
+    """
+    from app.db import add_chat_message, get_chat_history
+    from app.openrouter_utils import gerar_resposta_openrouter
 
-        # Registra usuária (caso nova)
-        registrar_usuario(user_id, nome)
+    # Extrai chat_id e texto
+    chat_id = payload["message"]["chat"]["id"]
+    texto_usuario = payload["message"]["text"]
+    tp_logger.info(f"📝 processar_mensagem - chat_id={chat_id}, texto='{texto_usuario}'")
 
-        # Verifica se usuária tem acesso
-        if not verificar_acesso(user_id):
-            texto_bloqueio = (
-                "❌ Seu período de uso gratuito terminou.\n\n"
-                "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
-            )
-            enviar_mensagem(user_id, texto_bloqueio)
-            return {"status": "bloqueado"}
+    # Salva mensagem do usuário
+    add_chat_message(str(chat_id), "user", texto_usuario)
 
-        # Pega histórico da conversa
-        historico = get_chat_history(user_id)
+    # Recupera histórico e gera resposta
+    mensagens = get_chat_history(str(chat_id))
+    resposta_ia = gerar_resposta_openrouter(mensagens)
+    tp_logger.info(f"🤖 Resposta do modelo: '{resposta_ia}'")
 
-        # Adiciona a nova mensagem no histórico
-        add_chat_message(user_id, "user", texto)
+    # Envia resposta final ao Telegram
+    await enviar_mensagem(chat_id, resposta_ia)
 
-        # Gera resposta com IA
-        resposta = gerar_resposta_openrouter(historico + [{"role": "user", "content": texto}])
-
-        # Salva resposta no histórico
-        add_chat_message(user_id, "assistant", resposta)
-
-        # Envia resposta para o Telegram
-        enviar_mensagem(user_id, resposta)
-        return {"status": "respondido"}
-
-    except Exception as e:
-        print("Erro no processamento:", e)
-        return {"erro": "Falha ao processar a mensagem"}
-
-def enviar_mensagem(user_id, texto):
+async def enviar_mensagem(chat_id: str, texto: str) -> None:
+    """
+    Envia uma mensagem ao chat especificado via API do Telegram, com logs de requisição e resposta.
+    """
+    url = f"{BASE_URL}/sendMessage"
     payload = {
-        "chat_id": user_id,
+        "chat_id": chat_id,
         "text": texto
     }
+    tp_logger.info(f"📤 Enviando mensagem - URL: {url}, payload: {payload}")
     try:
-        requests.post(API_URL, json=payload)
+        resp = requests.post(url, json=payload, timeout=10)
+        tp_logger.info(f"📥 Telegram respondeu: {resp.status_code} - {resp.text}")
     except Exception as e:
-        print("Erro ao enviar mensagem:", e)
+        tp_logger.error(f"❌ Erro ao chamar sendMessage: {e}")
