@@ -7,11 +7,11 @@ from app.telegram_utils import processar_mensagem, enviar_mensagem
 from app.db import registrar_usuario, verificar_acesso
 from app.painel import router as painel_router
 
-# Configuração de logs
+# Configurações de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("draana")
 
-# Inicialização do FastAPI
+# Inicialização do FastAPI\app = FastAPI()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -20,37 +20,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Roteador do painel administrativo em /painel
-app.include_router(painel_router)
+# Inclusão do roteador de painel administrativo
+app.include_router(painel_router, prefix="/painel")
 
 @app.post("/webhook")
 async def receive_webhook(request: Request):
-    # 1. Leia todo o JSON do webhook e registre no log
+    # 1. Recebe e loga o payload
     payload = await request.json()
-    logger.info(f"📩 Payload recebido: {payload}")
+    logger.info("📩 Payload recebido: %s", payload)
 
-    # 2. Extraia dados do usuário
+    # 2. Extrai informações do usuário
     message = payload.get("message", {})
     user = message.get("from", {})
     user_id = str(user.get("id", ""))
     nome = user.get("first_name", "Desconhecida")
 
-    # 3. Registre no banco e verifique acesso
+    # 3. Registro e verificação de acesso
     registrar_usuario(user_id, nome)
     if not verificar_acesso(user_id):
         await enviar_mensagem(
             user_id,
-            "❌ Seu período de uso gratuito terminou.
-
-"
+            "❌ Seu período de uso gratuito terminou.\n\n" +
             "Entre em contato com o suporte para continuar usando a Dra. Ana ❤️"
         )
         return {"status": "bloqueado"}
 
-    # 4. Processe a mensagem: adicionar histórico, gerar resposta e enviar ao Telegram
+    # 4. Processa a mensagem e envia resposta
     try:
         await processar_mensagem(payload)
-        logger.info(f"✅ Mensagem processada para usuário {user_id}")
+        logger.info("✅ Mensagem processada para usuário %s", user_id)
     except Exception as e:
-        logger.error(f"❌ Erro ao processar mensagem: {e}")
+        logger.error("❌ Erro ao processar mensagem: %s", e)
+
     return {"status": "ok"}
